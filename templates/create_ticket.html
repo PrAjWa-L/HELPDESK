@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block page_title %}Create Ticket{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/tickets" class="btn btn-outline">← Back to Tickets</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Create New Ticket</div>
+    <div class="page-subtitle">Submit an issue to the relevant department. All fields are required.</div>
+  </div>
+</div>
+
+<div style="max-width:620px;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Ticket Information</div>
+    </div>
+    <div style="padding:24px;">
+      <form method="post">
+
+        <div class="form-group">
+          <label class="form-label">Title</label>
+          <input name="title" class="form-control" placeholder="Brief summary of the issue" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" placeholder="Describe your issue in detail — include any relevant context" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Issue Type</label>
+          <input name="issue_type" class="form-control" placeholder="e.g. Hardware Fault, Payroll Query, Plumbing" required>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <select name="department" id="department" class="form-select" required onchange="toggleOtherDept(this)">
+              <option value="" disabled selected>Select department</option>
+              <option value="IT">IT</option>
+              <option value="HR">HR</option>
+              <option value="MAINTENANCE">Maintenance</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input name="location" class="form-control" placeholder="e.g. Floor 2, Room 204" required>
+          </div>
+        </div>
+
+        <div class="form-group" id="other_dept_box" style="display:none;">
+          <label class="form-label">Please specify department</label>
+          <input name="other_department" id="other_department" class="form-control" placeholder="e.g. Canteen, Security, Facilities">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select name="priority" class="form-select" required>
+            <option value="" disabled selected>Select priority level</option>
+            <option value="DESIRABLE">Desirable — SLA: 14 days</option>
+            <option value="ESSENTIAL">Essential — SLA: 7 days</option>
+            <option value="CRITICAL">Critical — SLA: 2 days</option>
+          </select>
+        </div>
+
+        <div style="padding-top:6px;border-top:1.5px solid var(--border);margin-top:4px;display:flex;justify-content:flex-end;gap:10px;">
+          <a href="/tickets" class="btn btn-outline">Cancel</a>
+          <button type="submit" class="btn btn-primary">Submit Ticket →</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleOtherDept(select) {
+  const box = document.getElementById('other_dept_box');
+  const input = document.getElementById('other_department');
+  if (select.value === 'OTHER') {
+    box.style.display = 'block';
+    input.required = true;
+  } else {
+    box.style.display = 'none';
+    input.required = false;
+    input.value = '';
+  }
+}
+</script>
+
+{% endblock %}

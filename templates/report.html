@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block page_title %}Download Report{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Download Report</div>
+    <div class="page-subtitle">
+      Export an Excel report of tickets created within a selected date range.
+      {% if current_user.role == "ADMIN" %}Only <strong>{{ current_user.department }}</strong> department tickets will be included.{% else %}All departments included.{% endif %}
+    </div>
+  </div>
+</div>
+
+<div style="max-width:480px;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Select Date Range</div>
+      <div class="card-subtitle">Defaults to the previous calendar month</div>
+    </div>
+    <div style="padding:24px;">
+      <form method="post">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">From</label>
+            <input type="date" name="date_from" class="form-control" value="{{ default_start }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">To</label>
+            <input type="date" name="date_to" class="form-control" value="{{ default_end }}" required>
+          </div>
+        </div>
+        <div style="padding-top:6px;border-top:1.5px solid var(--border);margin-top:4px;">
+          <button type="submit" class="btn btn-primary" style="width:100%;">↓ Download Excel Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;padding:14px 18px;background:var(--blue-soft);border:1.5px solid var(--blue-mid);border-radius:var(--radius);font-size:13px;color:var(--blue);font-weight:500;">
+    ℹ The report includes: Ticket ID, Title, Issue Type, Priority, Status, Department, Location, Raised By, Created At, SLA Due, Closed At, and Acknowledgment date.
+  </div>
+</div>
+
+{% endblock %}

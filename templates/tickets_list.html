@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block page_title %}
+  {% if current_user.role == "SUPER_ADMIN" %}All Tickets
+  {% elif current_user.role == "ADMIN" %}Department Tickets
+  {% else %}My Tickets{% endif %}
+{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/tickets/create" class="btn btn-primary">＋ New Ticket</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">
+      {% if current_user.role == "SUPER_ADMIN" %}All Tickets
+      {% elif current_user.role == "ADMIN" %}{{ current_user.department }} — Tickets
+      {% else %}My Tickets{% endif %}
+    </div>
+    <div class="page-subtitle">
+      {% if tickets %}{{ tickets|length }} ticket{{ 's' if tickets|length != 1 }} found{% else %}No tickets yet{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  {% if tickets %}
+  <div style="overflow-x:auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ticket ID</th>
+          <th>Title</th>
+          <th>Department</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>SLA Due</th>
+          <th>Acknowledged</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in tickets %}
+        <tr>
+          <td>
+            <a href="{{ url_for('tickets.ticket_detail', ticket_id=ticket.id) }}" class="table-link">
+              #{{ '%04d' % ticket.id }}
+            </a>
+          </td>
+          <td style="font-weight:600; color:var(--text); max-width:280px;">
+            <a href="{{ url_for('tickets.ticket_detail', ticket_id=ticket.id) }}" style="color:inherit;" onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='inherit'">
+              {{ ticket.title }}
+            </a>
+          </td>
+          <td>
+            <span style="font-size:12px;font-weight:600;color:var(--muted);">{{ ticket.department }}</span>
+          </td>
+          <td>
+            {% if ticket.priority == "CRITICAL" %}<span class="pill pill-critical">Critical</span>
+            {% elif ticket.priority == "ESSENTIAL" %}<span class="pill pill-essential">Essential</span>
+            {% else %}<span class="pill pill-desirable">Desirable</span>{% endif %}
+          </td>
+          <td>
+            {% if ticket.status == "OPEN" %}<span class="pill pill-open">Open</span>
+            {% elif ticket.status == "IN_PROGRESS" %}<span class="pill pill-progress">In Progress</span>
+            {% elif ticket.status == "RESOLVED" %}<span class="pill pill-resolved">Resolved</span>
+            {% else %}<span class="pill pill-closed">Closed</span>{% endif %}
+          </td>
+          <td>
+            {% if ticket.sla_due_at %}
+              <span style="font-family:'DM Mono',monospace;font-size:12px;
+                {% if ticket.sla_due_at < now and ticket.status not in ['CLOSED','RESOLVED'] %}color:var(--red);font-weight:700;{% else %}color:var(--muted);{% endif %}">
+                {{ ticket.sla_due_at.strftime('%d %b %Y') }}
+              </span>
+            {% else %}<span style="color:var(--light);">—</span>{% endif %}
+          </td>
+          <td>
+            {% if ticket.acknowledged_at %}
+              <span style="color:var(--green);font-size:12px;font-weight:600;">✔ {{ ticket.acknowledged_at.strftime('%d %b') }}</span>
+            {% elif ticket.status == "RESOLVED" %}
+              <span style="color:var(--amber);font-size:12px;font-weight:600;">⏳ Pending</span>
+            {% else %}
+              <span style="color:var(--light);font-size:12px;">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🎫</div>
+    <p>No tickets found. <a href="/tickets/create" style="color:var(--blue);font-weight:600;">Create one?</a></p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

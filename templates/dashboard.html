@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/tickets/create" class="btn btn-primary">＋ New Ticket</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Dashboard</div>
+    <div class="page-subtitle">
+      {% if current_user.role == "SUPER_ADMIN" %}
+        Organisation-wide overview — all departments
+      {% elif current_user.role == "ADMIN" %}
+        {{ current_user.department }} department overview
+      {% else %}
+        Your ticket activity
+      {% endif %}
+    </div>
+  </div>
+  {% if current_user.role in ["ADMIN", "SUPER_ADMIN"] %}
+  <a href="/report" class="btn btn-outline">↓ Export Report</a>
+  {% endif %}
+</div>
+
+<!-- STAT CARDS -->
+<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:24px;">
+
+  <div class="card" style="padding:18px 16px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Total</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;">{{ total_tickets }}</div>
+  </div>
+
+  <div class="card" style="padding:18px 16px; border-top:3px solid var(--amber);">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Open</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--amber);">{{ open_tickets }}</div>
+  </div>
+
+  <div class="card" style="padding:18px 16px; border-top:3px solid var(--blue);">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">In Progress</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--blue);">{{ in_progress }}</div>
+  </div>
+
+  <div class="card" style="padding:18px 16px; border-top:3px solid var(--green);">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Resolved</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--green);">{{ resolved }}</div>
+  </div>
+
+  <div class="card" style="padding:18px 16px; border-top:3px solid var(--violet);">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Closed</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--violet);">{{ closed }}</div>
+  </div>
+
+  <div class="card" style="padding:18px 16px; border-top:3px solid var(--red);">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Overdue</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--red);">{{ overdue }}</div>
+  </div>
+
+</div>
+
+<!-- MIDDLE PANELS -->
+<div style="display:grid; grid-template-columns:{% if current_user.role == 'SUPER_ADMIN' %}1fr 1fr 1.4fr{% else %}1fr 1.8fr{% endif %}; gap:16px; margin-bottom:20px;">
+
+  <!-- Priority -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Tickets by Priority</div>
+      </div>
+    </div>
+    <div style="padding:4px 0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
+          <span style="width:9px;height:9px;border-radius:50%;background:var(--red);display:inline-block;flex-shrink:0;"></span> Critical
+        </div>
+        <div style="font-size:20px;font-weight:800;color:var(--red);">{{ priority_counts["CRITICAL"] }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
+          <span style="width:9px;height:9px;border-radius:50%;background:var(--amber);display:inline-block;flex-shrink:0;"></span> Essential
+        </div>
+        <div style="font-size:20px;font-weight:800;color:var(--amber);">{{ priority_counts["ESSENTIAL"] }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px;">
+        <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
+          <span style="width:9px;height:9px;border-radius:50%;background:var(--light);display:inline-block;flex-shrink:0;"></span> Desirable
+        </div>
+        <div style="font-size:20px;font-weight:800;">{{ priority_counts["DESIRABLE"] }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Department (super admin only) -->
+  {% if current_user.role == "SUPER_ADMIN" %}
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Tickets by Department</div>
+    </div>
+    <div style="padding:4px 0;">
+      {% for dept, color in [("IT","var(--blue)"),("HR","var(--violet)"),("MAINTENANCE","var(--green)"),("OTHER","var(--muted)")] %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:{% if not loop.last %}1px solid var(--border){% else %}none{% endif %};">
+        <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
+          <span style="width:9px;height:9px;border-radius:50%;background:{{ color }};display:inline-block;flex-shrink:0;"></span>
+          {{ dept | title }}
+        </div>
+        <div style="font-size:20px;font-weight:800;color:{{ color }};">{{ department_counts[dept] }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent Activity -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Recent Activity</div>
+      <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);"></span>
+    </div>
+    <div>
+      {% if recent_activity %}
+        {% for activity in recent_activity %}
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 20px;border-bottom:{% if not loop.last %}1px solid var(--border){% else %}none{% endif %};">
+          <div style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
+            {% if activity.action == 'CREATED' %}background:var(--green-soft);
+            {% elif activity.action == 'STATUS_UPDATED' %}background:var(--blue-soft);
+            {% elif activity.action == 'COMMENT_ADDED' %}background:var(--violet-soft);
+            {% else %}background:var(--green-soft);{% endif %}">
+            {% if activity.action == "CREATED" %}🆕
+            {% elif activity.action == "STATUS_UPDATED" %}🔄
+            {% elif activity.action == "COMMENT_ADDED" %}💬
+            {% elif activity.action == "ACKNOWLEDGED" %}✅
+            {% else %}•{% endif %}
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:500;color:var(--text2);">
+              {% if activity.action == "CREATED" %}Ticket #{{ activity.ticket_id }} created
+              {% elif activity.action == "STATUS_UPDATED" %}Ticket #{{ activity.ticket_id }}: {{ activity.old_value }} → {{ activity.new_value }}
+              {% elif activity.action == "COMMENT_ADDED" %}Ticket #{{ activity.ticket_id }}: COO added a remark
+              {% elif activity.action == "ACKNOWLEDGED" %}Ticket #{{ activity.ticket_id }} acknowledged by staff
+              {% else %}{{ activity.action }}{% endif %}
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">
+              {{ activity.timestamp.strftime('%d %b, %I:%M %p') }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>No recent activity</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

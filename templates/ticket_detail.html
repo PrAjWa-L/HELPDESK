@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block page_title %}Ticket #{{ '%04d' % ticket.id }}{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/tickets" class="btn btn-outline">← Back to Tickets</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- TICKET HEADER -->
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+      <div class="page-title">{{ ticket.title }}</div>
+      {% if ticket.status == "OPEN" %}<span class="pill pill-open">Open</span>
+      {% elif ticket.status == "IN_PROGRESS" %}<span class="pill pill-progress">In Progress</span>
+      {% elif ticket.status == "RESOLVED" %}<span class="pill pill-resolved">Resolved</span>
+      {% else %}<span class="pill pill-closed">Closed</span>{% endif %}
+    </div>
+    <div class="page-subtitle">
+      Raised by <strong>{{ ticket.created_by.username }}</strong> on {{ ticket.created_at.strftime('%d %b %Y at %I:%M %p') }}
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.8fr 1fr;gap:20px;align-items:start;">
+
+  <!-- LEFT COLUMN -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- TICKET DETAILS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Ticket Details</div>
+      </div>
+      <div style="padding:20px;">
+        <div style="margin-bottom:18px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:5px;">Description</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65;">{{ ticket.description }}</div>
+        </div>
+        <hr class="divider">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          {% for label, value in [
+            ("Issue Type", ticket.issue_type),
+            ("Department", ticket.department + (' — ' + ticket.other_department_note if ticket.department == 'OTHER' and ticket.other_department_note else '')),
+            ("Location", ticket.location),
+            ("Priority", ticket.priority)
+          ] %}
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">{{ label }}</div>
+            {% if label == "Priority" %}
+              {% if ticket.priority == "CRITICAL" %}<span class="pill pill-critical">Critical</span>
+              {% elif ticket.priority == "ESSENTIAL" %}<span class="pill pill-essential">Essential</span>
+              {% else %}<span class="pill pill-desirable">Desirable</span>{% endif %}
+            {% else %}
+              <div style="font-size:13.5px;font-weight:600;color:var(--text);">{{ value }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">SLA Due</div>
+            <div style="font-size:13.5px;font-weight:600;font-family:'DM Mono',monospace;
+              {% if ticket.sla_due_at and ticket.sla_due_at < now and ticket.status not in ['CLOSED','RESOLVED'] %}color:var(--red);{% else %}color:var(--text);{% endif %}">
+              {{ ticket.sla_due_at.strftime('%d %b %Y, %I:%M %p') if ticket.sla_due_at else '—' }}
+            </div>
+          </div>
+          {% if ticket.acknowledged_at %}
+          <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">Acknowledged</div>
+            <div style="font-size:13px;font-weight:600;color:var(--green);">✔ {{ ticket.acknowledged_at.strftime('%d %b %Y') }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- USER ACKNOWLEDGMENT -->
+    {% if current_user.role == "USER" and ticket.created_by_id == current_user.id and ticket.status == "RESOLVED" %}
+    <div class="card" style="border:1.5px solid #a7f3d0;">
+      <div style="padding:18px 20px;">
+        <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;">✔ This ticket has been resolved</div>
+        {% if ticket.acknowledged_at %}
+          <div style="font-size:13px;color:var(--muted);">You acknowledged this resolution on {{ ticket.acknowledged_at.strftime('%d %b %Y at %I:%M %p') }}. Thank you.</div>
+        {% else %}
+          <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Please confirm that your issue has been fully resolved.</div>
+          <form method="post" action="{{ url_for('tickets.acknowledge_ticket', ticket_id=ticket.id) }}">
+            <button class="btn btn-success">✔ Acknowledge Resolution</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- COO REMARKS (visible to ADMIN + SUPER_ADMIN) -->
+    {% if current_user.role in ("ADMIN", "SUPER_ADMIN") and ticket.comments %}
+    <div class="card" style="border:1.5px solid #fecaca;">
+      <div class="card-header" style="background:var(--red-soft);">
+        <div class="card-title" style="color:var(--red);">🔒 COO Remarks</div>
+      </div>
+      <div style="padding:8px 0;">
+        {% for comment in ticket.comments | sort(attribute='timestamp') %}
+        <div style="padding:14px 20px;border-bottom:{% if not loop.last %}1px solid var(--border){% else %}none{% endif %};">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--violet));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;">
+              {{ comment.author.username[:2].upper() }}
+            </div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">{{ comment.author.username }}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">{{ comment.timestamp.strftime('%d %b %Y, %I:%M %p') }}</div>
+          </div>
+          <div style="font-size:13.5px;color:var(--text2);line-height:1.6;padding-left:34px;">{{ comment.body }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- COO ADD COMMENT -->
+    {% if current_user.role == "SUPER_ADMIN" %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Add COO Remark</div>
+        <div class="card-subtitle">Visible to department admins only</div>
+      </div>
+      <div style="padding:20px;">
+        <form method="post" action="{{ url_for('tickets.add_comment', ticket_id=ticket.id) }}">
+          <div class="form-group">
+            <textarea name="body" class="form-control" rows="3" placeholder="Write your remark…" required></textarea>
+          </div>
+          <button class="btn btn-danger btn-sm">Post Remark</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+
+    <!-- UPDATE STATUS -->
+    {% if current_user.role in ("ADMIN", "SUPER_ADMIN") %}
+    {% if current_user.role == "SUPER_ADMIN" or ticket.department == current_user.department or ticket.department == "OTHER" %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Update Status</div>
+      </div>
+      <div style="padding:18px 20px;">
+        <form method="post" action="{{ url_for('tickets.update_status', ticket_id=ticket.id) }}" style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <label class="form-label">New Status</label>
+            <select name="status" class="form-select">
+              <option value="OPEN" {% if ticket.status == 'OPEN' %}selected{% endif %}>Open</option>
+              <option value="IN_PROGRESS" {% if ticket.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+              <option value="RESOLVED" {% if ticket.status == 'RESOLVED' %}selected{% endif %}>Resolved</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;">Update Status</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- AUDIT LOG -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Audit Log</div>
+      </div>
+      <div style="padding:4px 0;">
+        {% if ticket.audits %}
+          {% for audit in ticket.audits | sort(attribute='timestamp') %}
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 18px;border-bottom:{% if not loop.last %}1px solid var(--border){% else %}none{% endif %};">
+            <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;
+              {% if audit.action == 'CREATED' %}background:var(--green);
+              {% elif audit.action == 'STATUS_UPDATED' %}background:var(--blue);
+              {% elif audit.action == 'ACKNOWLEDGED' %}background:var(--green);
+              {% else %}background:var(--violet);{% endif %}">
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12.5px;font-weight:500;color:var(--text2);">
+                {% if audit.action == "CREATED" %}Ticket created
+                {% elif audit.action == "STATUS_UPDATED" %}Status: {{ audit.old_value }} → {{ audit.new_value }}
+                {% elif audit.action == "COMMENT_ADDED" %}COO added a remark
+                {% elif audit.action == "ACKNOWLEDGED" %}Acknowledged by staff
+                {% else %}{{ audit.action }}{% endif %}
+              </div>
+              <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
+                {{ audit.timestamp.strftime('%d %b %Y, %I:%M %p') }}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state" style="padding:24px;">
+            <p>No audit entries yet.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
