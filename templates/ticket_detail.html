@@ -77,19 +77,27 @@
 
     <!-- USER ACKNOWLEDGMENT -->
     {% if current_user.role == "USER" and ticket.created_by_id == current_user.id and ticket.status == "RESOLVED" %}
-    <div class="card" style="border:1.5px solid #a7f3d0;">
-      <div style="padding:18px 20px;">
-        <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;">✔ This ticket has been resolved</div>
-        {% if ticket.acknowledged_at %}
-          <div style="font-size:13px;color:var(--muted);">You acknowledged this resolution on {{ ticket.acknowledged_at.strftime('%d %b %Y at %I:%M %p') }}. Thank you.</div>
-        {% else %}
+      <div class="card" style="border:1.5px solid #a7f3d0;">
+        <div style="padding:18px 20px;">
+          <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;">✔ This ticket has been resolved</div>
+          {% if ticket.acknowledged_at %}
+            <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">You acknowledged this resolution on {{ ticket.acknowledged_at.strftime('%d %b %Y at %I:%M %p') }}. Thank you.</div>
+              <form method="post" action="{{ url_for('tickets.reject_resolution', ticket_id=ticket.id) }}">
+              <button class="btn btn-outline" style="border-color:var(--red);color:var(--red);">✖ Issue Not Resolved — Reopen</button>
+            </form>
+          {% else %}
           <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Please confirm that your issue has been fully resolved.</div>
-          <form method="post" action="{{ url_for('tickets.acknowledge_ticket', ticket_id=ticket.id) }}">
-            <button class="btn btn-success">✔ Acknowledge Resolution</button>
-          </form>
-        {% endif %}
+            <div style="display:flex;gap:10px;">
+              <form method="post" action="{{ url_for('tickets.acknowledge_ticket', ticket_id=ticket.id) }}">
+                <button class="btn btn-success">✔ Acknowledge Resolution</button>
+              </form>
+              <form method="post" action="{{ url_for('tickets.reject_resolution', ticket_id=ticket.id) }}">
+                <button class="btn btn-outline" style="border-color:var(--red);color:var(--red);">✖ Issue Not Resolved — Reopen</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
       </div>
-    </div>
     {% endif %}
 
     <!-- COO REMARKS (visible to ADMIN + SUPER_ADMIN) -->

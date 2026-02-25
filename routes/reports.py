@@ -1,6 +1,7 @@
 from flask import Blueprint, send_file, request, render_template, flash, redirect, url_for
 from flask_login import login_required, current_user
 from models.ticket import Ticket
+from extensions import db
 from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -15,7 +16,6 @@ def report():
     if current_user.role not in ("ADMIN", "SUPER_ADMIN"):
         return "Unauthorized", 403
 
-    # Default: previous calendar month
     today = datetime.utcnow()
     first_of_this_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     default_end = (first_of_this_month - timedelta(days=1)).replace(hour=23, minute=59, second=59)
@@ -35,29 +35,32 @@ def report():
             flash("Start date must be before end date.", "warning")
             return redirect(url_for("reports.report"))
 
-        # Build query
         query = Ticket.query.filter(
             Ticket.created_at >= date_from,
             Ticket.created_at <= date_to
         )
 
+        # ADMIN sees their dept + OTHER tickets
         if current_user.role == "ADMIN":
-            query = query.filter_by(department=current_user.department)
+            query = query.filter(
+                db.or_(
+                    Ticket.department == current_user.department,
+                    Ticket.department == "OTHER"
+                )
+            )
 
         tickets = query.all()
 
-        # Build Excel
         wb = Workbook()
         ws = wb.active
         ws.title = "Ticket Report"
 
-        # Header styling
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill("solid", fgColor="2563EB")
 
         headers = [
             "ID", "Title", "Issue Type", "Priority", "Status",
-            "Department", "Location", "Raised By",
+            "Department", "Other Dept Note", "Location", "Raised By",
             "Created At", "SLA Due", "Closed At", "Acknowledged At"
         ]
 
@@ -75,6 +78,7 @@ def report():
                 ticket.priority,
                 ticket.status,
                 ticket.department,
+                ticket.other_department_note or "—",
                 ticket.location,
                 ticket.created_by.username if ticket.created_by else "—",
                 ticket.created_at.strftime("%Y-%m-%d %H:%M") if ticket.created_at else "",
@@ -83,7 +87,6 @@ def report():
                 ticket.acknowledged_at.strftime("%Y-%m-%d %H:%M") if ticket.acknowledged_at else "",
             ])
 
-        # Auto column width
         for col in ws.columns:
             max_len = max((len(str(cell.value)) for cell in col if cell.value), default=10)
             ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
@@ -96,7 +99,6 @@ def report():
 
         return send_file(filepath, as_attachment=True)
 
-    # GET — render the form
     return render_template(
         "report.html",
         default_start=default_start.strftime("%Y-%m-%d"),

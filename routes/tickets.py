@@ -193,3 +193,31 @@ def acknowledge_ticket(ticket_id):
 
     flash("Thank you for acknowledging the resolution!", "success")
     return redirect(url_for("tickets.ticket_detail", ticket_id=ticket.id))
+
+
+@tickets_bp.route("/tickets/<int:ticket_id>/reject_resolution", methods=["POST"])
+@login_required
+def reject_resolution(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    if current_user.role != "USER" or ticket.created_by_id != current_user.id:
+        return "Unauthorized", 403
+
+    if ticket.status != "RESOLVED":
+        flash("This action is only available on resolved tickets.", "warning")
+        return redirect(url_for("tickets.ticket_detail", ticket_id=ticket.id))
+
+    ticket.status = "OPEN"
+    ticket.acknowledged_at = None
+
+    audit = TicketAudit(
+        ticket_id=ticket.id,
+        action="STATUS_UPDATED",
+        old_value="RESOLVED",
+        new_value="OPEN"
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    flash("Ticket reopened. The department has been notified.", "warning")
+    return redirect(url_for("tickets.ticket_detail", ticket_id=ticket.id))

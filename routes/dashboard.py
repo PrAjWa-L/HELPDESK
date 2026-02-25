@@ -2,6 +2,7 @@ from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from models.ticket import Ticket
 from models.audit import TicketAudit
+from extensions import db
 from datetime import datetime
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -16,7 +17,12 @@ def dashboard():
         base_query = Ticket.query
 
     elif current_user.role == "ADMIN":
-        base_query = Ticket.query.filter_by(department=current_user.department)
+        base_query = Ticket.query.filter(
+            db.or_(
+                Ticket.department == current_user.department,
+                Ticket.department == "OTHER"
+            )
+        )
 
     elif current_user.role == "USER":
         base_query = Ticket.query.filter_by(created_by_id=current_user.id)
@@ -43,7 +49,6 @@ def dashboard():
         "CRITICAL": len([t for t in tickets if t.priority == "CRITICAL"]),
     }
 
-    # Recent activity — scoped properly per role
     if current_user.role == "SUPER_ADMIN":
         recent_activity = TicketAudit.query.order_by(
             TicketAudit.timestamp.desc()
@@ -53,14 +58,18 @@ def dashboard():
         recent_activity = (
             TicketAudit.query
             .join(Ticket)
-            .filter(Ticket.department == current_user.department)
+            .filter(
+                db.or_(
+                    Ticket.department == current_user.department,
+                    Ticket.department == "OTHER"
+                )
+            )
             .order_by(TicketAudit.timestamp.desc())
             .limit(10)
             .all()
         )
 
     else:
-        # USER — show activity only on their own tickets
         ticket_ids = [t.id for t in tickets]
         if ticket_ids:
             recent_activity = (
