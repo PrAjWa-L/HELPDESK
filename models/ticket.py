@@ -7,6 +7,8 @@ class Ticket(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
+    raiser_name = db.Column(db.String(100), nullable=True)
+
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     issue_type = db.Column(db.String(100), nullable=False)

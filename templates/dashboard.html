@@ -49,6 +49,7 @@
     <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--green);">{{ resolved }}</div>
   </div>
 
+
   <div class="card" style="padding:18px 16px; border-top:3px solid var(--red);">
     <div style="font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Overdue</div>
     <div style="font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--red);">{{ overdue }}</div>
@@ -62,9 +63,7 @@
   <!-- Priority -->
   <div class="card">
     <div class="card-header">
-      <div>
-        <div class="card-title">Tickets by Priority</div>
-      </div>
+      <div class="card-title">Tickets by Priority</div>
     </div>
     <div style="padding:4px 0;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border);">
@@ -95,14 +94,16 @@
       <div class="card-title">Tickets by Department</div>
     </div>
     <div style="padding:4px 0;">
-      {% for dept, color in [("IT","var(--blue)"),("HR","var(--violet)"),("MAINTENANCE","var(--green)"),("OTHER","var(--muted)")] %}
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:{% if not loop.last %}1px solid var(--border){% else %}none{% endif %};">
-        <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;">
+    {% for dept, color in [("IT","var(--blue)"),("HR","var(--violet)"),("MAINTENANCE","var(--green)"),("OTHER","var(--muted)")] %}
+      <a href="/tickets?department={{ dept }}"
+         style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:{% if not loop.last %}1px solid var(--border){% else %}none{% endif %};text-decoration:none;transition:background 0.13s;"
+         onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'">
+          <div style="display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;color:var(--text);">
           <span style="width:9px;height:9px;border-radius:50%;background:{{ color }};display:inline-block;flex-shrink:0;"></span>
           {{ dept }}
-        </div>
+          </div>
         <div style="font-size:20px;font-weight:800;color:{{ color }};">{{ department_counts[dept] }}</div>
-      </div>
+      </a>
       {% endfor %}
     </div>
   </div>
@@ -138,7 +139,7 @@
               {% else %}{{ activity.action }}{% endif %}
             </div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">
-              {{ activity.timestamp.strftime('%d %b, %I:%M %p') }}
+              {{ activity.timestamp | ist }}
             </div>
           </div>
         </div>
@@ -153,5 +154,90 @@
   </div>
 
 </div>
+
+<!-- MAINTENANCE TASK SUMMARY — shown to MAINTENANCE admin and SUPER_ADMIN -->
+{% if tasks_summary is not none %}
+<div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+  <div style="font-size:15px;font-weight:800;letter-spacing:-0.3px;">🔧 Maintenance Task Tracker</div>
+  <a href="/tasks" class="btn btn-outline btn-sm">View All Tasks →</a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px;">
+  <div class="card" style="padding:16px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Total</div>
+    <div style="font-size:24px;font-weight:800;">{{ tasks_summary.total }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--amber);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Pending</div>
+    <div style="font-size:24px;font-weight:800;color:var(--amber);">{{ tasks_summary.pending }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--blue);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">In Progress</div>
+    <div style="font-size:24px;font-weight:800;color:var(--blue);">{{ tasks_summary.in_progress }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--green);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Completed</div>
+    <div style="font-size:24px;font-weight:800;color:var(--green);">{{ tasks_summary.completed }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--red);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Overdue</div>
+    <div style="font-size:24px;font-weight:800;color:var(--red);">{{ tasks_summary.overdue }}</div>
+  </div>
+</div>
+
+<!-- UPCOMING TASKS TABLE -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header">
+    <div class="card-title">Upcoming Tasks</div>
+    <div class="card-subtitle">Next 5 tasks approaching deadline</div>
+  </div>
+  {% if tasks_summary.upcoming %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Title</th>
+        <th>Assigned To</th>
+        <th>Status</th>
+        <th>Deadline</th>
+        <th>Alert Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for task in tasks_summary.upcoming %}
+      {% set days_left = (task.deadline - now).days %}
+      <tr>
+        <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--blue);">#{{ '%03d' % task.id }}</td>
+        <td style="font-weight:600;">{{ task.title }}</td>
+        <td>{{ task.assigned_to }}</td>
+        <td>
+          {% if task.status == "PENDING" %}<span class="pill pill-open">Pending</span>
+          {% elif task.status == "IN_PROGRESS" %}<span class="pill pill-progress">In Progress</span>
+          {% else %}<span class="pill pill-resolved">Completed</span>{% endif %}
+        </td>
+        <td>
+          <span style="font-family:'DM Mono',monospace;font-size:12px;
+            {% if days_left <= 1 %}color:var(--red);font-weight:700;
+            {% elif days_left <= 3 %}color:var(--amber);font-weight:600;
+            {% else %}color:var(--muted);{% endif %}">
+            {{ task.deadline | ist }}
+            {% if days_left == 0 %}<span style="font-size:10px;background:var(--red-soft);color:var(--red);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:700;">TODAY</span>
+            {% elif days_left == 1 %}<span style="font-size:10px;background:var(--amber-soft);color:var(--amber);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:700;">TOMORROW</span>
+            {% endif %}
+          </span>
+        </td>
+        <td style="font-size:12px;color:var(--muted);">{{ task.notify_email }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state" style="padding:28px;">
+    <div class="empty-icon">✅</div>
+    <p>No upcoming tasks — all clear.</p>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
 {% endblock %}

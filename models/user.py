@@ -13,6 +13,8 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), nullable=False)  # USER / ADMIN
     department = db.Column(db.String(50), nullable=True)  # IT / HR / MAINTENANCE
 
+    email = db.Column(db.String(200), nullable=True)
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 

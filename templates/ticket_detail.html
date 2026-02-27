@@ -19,7 +19,7 @@
       {% else %}<span class="pill pill-closed">Closed</span>{% endif %}
     </div>
     <div class="page-subtitle">
-      Raised by <strong>{{ ticket.created_by.username }}</strong> on {{ ticket.created_at.strftime('%d %b %Y at %I:%M %p') }}
+      Raised by <strong>{{ ticket.created_by.username }}</strong> on {{ ticket.created_at | ist }}
     </div>
   </div>
 </div>
@@ -40,6 +40,10 @@
           <div style="font-size:14px;color:var(--text2);line-height:1.65;">{{ ticket.description }}</div>
         </div>
         <hr class="divider">
+        <div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">Raised By (Name)</div>
+            <div style="font-size:13.5px;font-weight:600;color:var(--text);">{{ ticket.raiser_name or '—' }}</div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           {% for label, value in [
             ("Issue Type", ticket.issue_type),
@@ -62,13 +66,13 @@
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">SLA Due</div>
             <div style="font-size:13.5px;font-weight:600;font-family:'DM Mono',monospace;
               {% if ticket.sla_due_at and ticket.sla_due_at < now and ticket.status not in ['CLOSED','RESOLVED'] %}color:var(--red);{% else %}color:var(--text);{% endif %}">
-              {{ ticket.sla_due_at.strftime('%d %b %Y, %I:%M %p') if ticket.sla_due_at else '—' }}
+              {{ ticket.sla_due_at | ist if ticket.sla_due_at else '—' }}
             </div>
           </div>
           {% if ticket.acknowledged_at %}
           <div>
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:4px;">Acknowledged</div>
-            <div style="font-size:13px;font-weight:600;color:var(--green);">✔ {{ ticket.acknowledged_at.strftime('%d %b %Y') }}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--green);">✔ {{ ticket.acknowledged_at | ist }}</div>
           </div>
           {% endif %}
         </div>
@@ -81,7 +85,7 @@
         <div style="padding:18px 20px;">
           <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px;">✔ This ticket has been resolved</div>
           {% if ticket.acknowledged_at %}
-            <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">You acknowledged this resolution on {{ ticket.acknowledged_at.strftime('%d %b %Y at %I:%M %p') }}. Thank you.</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">You acknowledged this resolution on {{ ticket.acknowledged_at | ist }}. Thank you.</div>
               <form method="post" action="{{ url_for('tickets.reject_resolution', ticket_id=ticket.id) }}">
               <button class="btn btn-outline" style="border-color:var(--red);color:var(--red);">✖ Issue Not Resolved — Reopen</button>
             </form>
@@ -114,7 +118,7 @@
               {{ comment.author.username[:2].upper() }}
             </div>
             <div style="font-size:12px;font-weight:700;color:var(--text);">{{ comment.author.username }}</div>
-            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">{{ comment.timestamp.strftime('%d %b %Y, %I:%M %p') }}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;">{{ comment.timestamp | ist }}</div>
           </div>
           <div style="font-size:13.5px;color:var(--text2);line-height:1.6;padding-left:34px;">{{ comment.body }}</div>
         </div>
@@ -194,7 +198,7 @@
                 {% else %}{{ audit.action }}{% endif %}
               </div>
               <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;">
-                {{ audit.timestamp.strftime('%d %b %Y, %I:%M %p') }}
+                {{ audit.timestamp | ist }}
               </div>
             </div>
           </div>

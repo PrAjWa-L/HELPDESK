@@ -71,13 +71,13 @@
             {% if ticket.sla_due_at %}
               <span style="font-family:'DM Mono',monospace;font-size:12px;
                 {% if ticket.sla_due_at < now and ticket.status not in ['CLOSED','RESOLVED'] %}color:var(--red);font-weight:700;{% else %}color:var(--muted);{% endif %}">
-                {{ ticket.sla_due_at.strftime('%d %b %Y') }}
+                {{ ticket.sla_due_at | ist }}
               </span>
             {% else %}<span style="color:var(--light);">—</span>{% endif %}
           </td>
           <td>
             {% if ticket.acknowledged_at %}
-              <span style="color:var(--green);font-size:12px;font-weight:600;">✔ {{ ticket.acknowledged_at.strftime('%d %b') }}</span>
+              <span style="color:var(--green);font-size:12px;font-weight:600;">✔ {{ ticket.acknowledged_at | ist }}</span>
             {% elif ticket.status == "RESOLVED" %}
               <span style="color:var(--amber);font-size:12px;font-weight:600;">⏳ Pending</span>
             {% else %}

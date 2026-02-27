@@ -470,9 +470,10 @@
         {% elif current_user.role == "ADMIN" %}Department Tickets
         {% else %}My Tickets{% endif %}
       </a>
-      {% if current_user.role == "ADMIN" %}
-      <a href="/department" class="nav-link {% if request.path == '/department' %}active{% endif %}">
-        <span class="nav-icon">🏢</span> Department View
+
+      {% if current_user.role == "ADMIN" and current_user.department == "MAINTENANCE" or current_user.role == "SUPER_ADMIN" %}
+      <a href="/tasks" class="nav-link {% if '/tasks' in request.path %}active{% endif %}">
+        <span class="nav-icon">🔧</span> Task Tracker
       </a>
       {% endif %}
     </div>

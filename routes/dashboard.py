@@ -2,6 +2,7 @@ from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from models.ticket import Ticket
 from models.audit import TicketAudit
+from models.task import Task
 from extensions import db
 from datetime import datetime
 
@@ -33,10 +34,10 @@ def dashboard():
     tickets = base_query.all()
 
     total_tickets = len(tickets)
-    open_tickets = len([t for t in tickets if t.status == "OPEN"])
-    in_progress = len([t for t in tickets if t.status == "IN_PROGRESS"])
-    resolved = len([t for t in tickets if t.status == "RESOLVED"])
-    closed = len([t for t in tickets if t.status == "CLOSED"])
+    open_tickets  = len([t for t in tickets if t.status == "OPEN"])
+    in_progress   = len([t for t in tickets if t.status == "IN_PROGRESS"])
+    resolved      = len([t for t in tickets if t.status == "RESOLVED"])
+    closed        = len([t for t in tickets if t.status == "CLOSED"])
 
     overdue = len([
         t for t in tickets
@@ -46,7 +47,7 @@ def dashboard():
     priority_counts = {
         "DESIRABLE": len([t for t in tickets if t.priority == "DESIRABLE"]),
         "ESSENTIAL": len([t for t in tickets if t.priority == "ESSENTIAL"]),
-        "CRITICAL": len([t for t in tickets if t.priority == "CRITICAL"]),
+        "CRITICAL":  len([t for t in tickets if t.priority == "CRITICAL"]),
     }
 
     if current_user.role == "SUPER_ADMIN":
@@ -85,10 +86,31 @@ def dashboard():
     department_counts = None
     if current_user.role == "SUPER_ADMIN":
         department_counts = {
-            "IT": len([t for t in tickets if t.department == "IT"]),
-            "HR": len([t for t in tickets if t.department == "HR"]),
+            "IT":          len([t for t in tickets if t.department == "IT"]),
+            "HR":          len([t for t in tickets if t.department == "HR"]),
             "MAINTENANCE": len([t for t in tickets if t.department == "MAINTENANCE"]),
-            "OTHER": len([t for t in tickets if t.department == "OTHER"]),
+            "OTHER":       len([t for t in tickets if t.department == "OTHER"]),
+        }
+
+    # ── Task summary for MAINTENANCE admin and SUPER_ADMIN ──
+    tasks_summary = None
+    if current_user.role == "SUPER_ADMIN" or (
+        current_user.role == "ADMIN" and current_user.department == "MAINTENANCE"
+    ):
+        all_tasks = Task.query.all()
+        tasks_summary = {
+            "total":     len(all_tasks),
+            "pending":   len([t for t in all_tasks if t.status == "PENDING"]),
+            "in_progress": len([t for t in all_tasks if t.status == "IN_PROGRESS"]),
+            "completed": len([t for t in all_tasks if t.status == "COMPLETED"]),
+            "overdue":   len([
+                t for t in all_tasks
+                if t.deadline < now and t.status != "COMPLETED"
+            ]),
+            "upcoming":  Task.query.filter(
+                Task.deadline > now,
+                Task.status != "COMPLETED"
+            ).order_by(Task.deadline.asc()).limit(5).all()
         }
 
     return render_template(
@@ -101,5 +123,7 @@ def dashboard():
         overdue=overdue,
         priority_counts=priority_counts,
         recent_activity=recent_activity,
-        department_counts=department_counts
+        department_counts=department_counts,
+        tasks_summary=tasks_summary,
+        now=now,
     )

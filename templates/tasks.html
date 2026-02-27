@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block page_title %}Maintenance Tasks{% endblock %}
+
+{% block topbar_actions %}
+  {% if current_user.role == "ADMIN" and current_user.department == "MAINTENANCE" %}
+  <a href="/tasks/create" class="btn btn-primary">＋ New Task</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">Maintenance Task Tracker</div>
+    <div class="page-subtitle">
+      {% if current_user.role == "SUPER_ADMIN" %}
+        Read-only overview of all maintenance tasks.
+      {% else %}
+        Create and manage maintenance tasks. Email alerts fire automatically at deadline.
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+  {% set pending   = tasks | selectattr('status','eq','PENDING')    | list %}
+  {% set inprog    = tasks | selectattr('status','eq','IN_PROGRESS') | list %}
+  {% set completed = tasks | selectattr('status','eq','COMPLETED')  | list %}
+  {% set overdue   = tasks | selectattr('deadline','lt', now) | rejectattr('status','eq','COMPLETED') | list %}
+  
+  <div class="card" style="padding:16px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Total</div>
+    <div style="font-size:26px;font-weight:800;">{{ tasks|length }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--amber);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Pending</div>
+    <div style="font-size:26px;font-weight:800;color:var(--amber);">{{ pending|length }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--blue);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">In Progress</div>
+    <div style="font-size:26px;font-weight:800;color:var(--blue);">{{ inprog|length }}</div>
+  </div>
+  <div class="card" style="padding:16px;border-top:3px solid var(--red);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:8px;">Overdue</div>
+    <div style="font-size:26px;font-weight:800;color:var(--red);">{{ overdue|length }}</div>
+  </div>
+</div>
+
+<div class="card">
+  {% if tasks %}
+  <div style="overflow-x:auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Title</th>
+          <th>Assigned To</th>
+          <th>Status</th>
+          <th>Deadline</th>
+          <th style="text-align:center;">Email Sent</th>
+          {% if current_user.role == "ADMIN" %}<th>Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        {% set is_overdue = task.deadline < now and task.status != "COMPLETED" %}
+        <tr>
+          <td style="font-family:'DM Mono',monospace;font-size:12px;color:var(--blue);">#{{ '%03d' % task.id }}</td>
+          <td>
+            <div style="font-weight:600;color:var(--text);">{{ task.title }}</div>
+            {% if task.description %}
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+              {{ task.description[:80] }}{% if task.description|length > 80 %}…{% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td style="font-weight:600;">{{ task.assigned_to }}</td>
+          <td>
+            {% if task.status == "PENDING" %}<span class="pill pill-open">Pending</span>
+            {% elif task.status == "IN_PROGRESS" %}<span class="pill pill-progress">In Progress</span>
+            {% else %}<span class="pill pill-resolved">Completed</span>{% endif %}
+          </td>
+          <td>
+            <span style="font-family:'DM Mono',monospace;font-size:12px;
+              {% if is_overdue %}color:var(--red);font-weight:700;{% else %}color:var(--muted);{% endif %}">
+              {{ task.deadline | ist }}
+            </span>
+            {% if is_overdue %}
+            <span style="font-size:10px;background:var(--red-soft);color:var(--red);padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:700;">OVERDUE</span>
+            {% endif %}
+          </td>
+          <td style="text-align:center;">
+            {% if task.deadline_email_sent %}
+              <span style="color:var(--green);font-weight:700;">✔</span>
+            {% else %}
+              <span style="color:var(--light);">—</span>
+            {% endif %}
+          </td>
+          {% if current_user.role == "ADMIN" %}
+          <td>
+            <div style="display:flex;gap:8px;">
+              <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-outline btn-sm">Edit</a>
+              <form method="post" action="{{ url_for('tasks.delete_task', task_id=task.id) }}"
+                    onsubmit="return confirm('Delete this task?')">
+                <button class="btn btn-sm" style="background:var(--red-soft);color:var(--red);border:1.5px solid #fecaca;">Delete</button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔧</div>
+    <p>No tasks yet.
+      {% if current_user.role == "ADMIN" %}
+        <a href="/tasks/create" style="color:var(--blue);font-weight:600;">Create one?</a>
+      {% endif %}
+    </p>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

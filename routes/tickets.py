@@ -15,6 +15,7 @@ tickets_bp = Blueprint("tickets", __name__)
 @login_required
 def create_ticket():
     if request.method == "POST":
+        raiser_name = request.form.get("raiser_name", "").strip()
         title = request.form["title"]
         description = request.form["description"]
         issue_type = request.form["issue_type"]
@@ -24,6 +25,7 @@ def create_ticket():
         priority = request.form["priority"]
 
         ticket = Ticket(
+            raiser_name=raiser_name,
             title=title,
             description=description,
             issue_type=issue_type,
@@ -60,7 +62,6 @@ def list_tickets():
         tickets = Ticket.query.filter_by(created_by_id=current_user.id).all()
 
     elif current_user.role == "ADMIN":
-        # Admins see their own dept tickets + all OTHER tickets
         tickets = Ticket.query.filter(
             db.or_(
                 Ticket.department == current_user.department,
@@ -69,7 +70,11 @@ def list_tickets():
         ).all()
 
     elif current_user.role == "SUPER_ADMIN":
-        tickets = Ticket.query.all()
+        dept_filter = request.args.get("department")
+        if dept_filter:
+            tickets = Ticket.query.filter_by(department=dept_filter).all()
+        else:
+            tickets = Ticket.query.all()
 
     else:
         tickets = []
